@@ -10,6 +10,8 @@ https://github.com/gera2ld/coc-ai/assets/3139113/eead707d-fbda-4edb-9569-f4a48bd
 
 ## Installation
 
+First [get an API key](https://ai.google.dev/tutorials/setup) from Gemini. It's free!
+
 ```viml
 :CocInstall coc-ai
 ```
@@ -42,3 +44,7 @@ Set the API key and other options in `:CocConfig`:
 " Ask anything, either specified or from the selected text
 :CocCommand ai.ask
 ```
+
+## Related Projects
+
+- [ai.nvim](https://github.com/gera2ld/ai.nvim) - A Neovim plugin written in Lua, powered by Gemini
