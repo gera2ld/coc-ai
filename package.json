@@ -1,0 +1,63 @@
+{
+  "name": "coc-ai",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepare": "husky install",
+    "dev": "tsc -w",
+    "clean": "del-cli dist",
+    "prepublishOnly": "run-s build",
+    "ci": "run-s lint",
+    "build:js": "tsc",
+    "build": "run-s ci clean build:js",
+    "lint": "eslint --ext .ts . && prettier -c src",
+    "lint:fix": "eslint --ext .ts . --fix && prettier -c src -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.4.2",
+    "coc.nvim": "^0.0.83-next.9",
+    "del-cli": "^5.0.0",
+    "eslint": "^8.44.0",
+    "eslint-config-unjs": "^0.2.1",
+    "husky": "^8.0.3",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.1.2"
+  },
+  "engines": {
+    "coc": ">=0.0.80",
+    "node": ">=18"
+  },
+  "activationEvents": ["*"],
+  "contributes": {
+    "configuration": {
+      "title": "coc-ai",
+      "properties": {
+        "coc-ai.geminiApiKey": {
+          "type": "string",
+          "description": "API key for Google Gemini"
+        },
+        "coc-ai.locale": {
+          "type": "string",
+          "default": "en",
+          "description": "The target locale for the content to be translated into."
+        },
+        "coc-ai.alternateLocale": {
+          "type": "string",
+          "default": "zh",
+          "description": "The alternate locale for the content in target locale to be translated into."
+        }
+      }
+    }
+  }
+}
