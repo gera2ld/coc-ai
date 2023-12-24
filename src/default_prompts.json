@@ -1,0 +1,47 @@
+[
+  {
+    "name": "define",
+    "command": "Gemini Define",
+    "model": "gemini-pro",
+    "shortcut": "ctrlcmd-g d",
+    "loadingTpl": "**Define:** {{input |> escape}}\n\n*Asking Gemini...*\n",
+    "promptTpl": "Define the content below in locale {{locale}}. The output is a bullet list of definitions grouped by parts of speech in plain text. Each item of the definition list contains pronunciation using IPA, meaning, and a list of usage examples with at most 2 items. Do not return anything else. Here is the content:\n\n{{input |> json_encode}}",
+    "resultTpl": "**Define:** {{input |> escape}}\n\n{{output}}\n"
+  },
+  {
+    "name": "translate",
+    "command": "Gemini Translate",
+    "model": "gemini-pro",
+    "shortcut": "ctrlcmd-g t",
+    "loadingTpl": "**Translating by Gemini...**\n\n{{input |> escape}}\n",
+    "promptTpl": "Translate the content below into locale {{locale}}. Translate into {{alternateLocale}} instead if it is already in {{locale}}. Do not return anything else. Here is the content:\n\n{{input |> json_encode}}",
+    "resultTpl": "**Translated by Gemini**\n\n{{input |> escape}}\n\n->\n\n{{output}}\n"
+  },
+  {
+    "name": "improve",
+    "command": "Gemini Improve",
+    "model": "gemini-pro",
+    "shortcut": "ctrlcmd-g i",
+    "loadingTpl": "**Improving by Gemini...**\n\n{{input |> escape}}\n",
+    "promptTpl": "Make the content below more native, correcting grammar while keeping the same locale. Do not return anything else. Here is the content:\n\n{{input |> json_encode}}",
+    "resultTpl": "**Improved by Gemini**\n\n{{input |> escape}}\n\n->\n\n{{output}}\n"
+  },
+  {
+    "name": "openai-translate",
+    "command": "OpenAI Translate",
+    "model": "gpt-3.5-turbo",
+    "shortcut": "ctrlcmd-g t",
+    "loadingTpl": "**Translating by OpenAI...**\n\n{{input |> escape}}\n",
+    "promptTpl": "Translate the content below into locale {{locale}}. Translate into {{alternateLocale}} instead if it is already in {{locale}}. Do not return anything else. Here is the content:\n\n{{input |> json_encode}}",
+    "resultTpl": "**Translated by OpenAI**\n\n{{input |> escape}}\n\n->\n\n{{output}}\n"
+  },
+  {
+    "name": "openai-improve",
+    "command": "OpenAI Improve",
+    "model": "gpt-3.5-turbo",
+    "shortcut": "ctrlcmd-g i",
+    "loadingTpl": "**Improving by OpenAI...**\n\n{{input |> escape}}\n",
+    "promptTpl": "Make the content below more native, correcting grammar while keeping the same locale. Do not return anything else. Here is the content:\n\n{{input |> json_encode}}",
+    "resultTpl": "**Improved by Gemini**\n\n{{input |> escape}}\n\n->\n\n{{output}}\n"
+  }
+]

@@ -1,16 +1,21 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   ExtensionContext,
-  commands,
-  workspace,
-  window,
   Window,
+  commands,
+  window,
+  workspace,
 } from 'coc.nvim';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import defaultPrompts from './default_prompts.json';
+import { fillTemplate } from './util';
+
+const prompts: PromptDefinition[] = defaultPrompts;
 
 const options = {
   geminiApiKey: '',
   locale: 'en',
   alternateLocale: 'zh',
+  prompts,
 };
 
 async function askGemini(
@@ -86,60 +91,26 @@ async function getSelectedText(): Promise<string> {
   return range ? doc.textDocument.getText(range).trim() : '';
 }
 
-async function handleDefine(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(`Query: ${input}\n\nAsking Gemini...`);
-  const result = await askGemini(
-    `Define the content below in locale ${
-      options.locale
-    }. The output is a bullet list of definitions grouped by parts of speech in plain text. Each item of the definition list contains pronunciation using IPA, meaning, and a list of usage examples with at most 2 items. Do not return anything else. Here is the content:\n\n${JSON.stringify(
-      input,
-    )}`,
-    (output) => `Query: ${input}\n\n${output}`,
-  );
-  update(result);
-}
-
-async function handleTranslate(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(
-    `Translating the content below:\n\n${input}\n\nAsking Gemini...`,
-  );
-  const result = await askGemini(
-    `Translate the content below into locale ${
-      options.locale
-    }. Translate into ${options.alternateLocale} instead if it is already in ${
-      options.locale
-    }. Do not return anything else. Here is the content:\n\n${JSON.stringify(
-      input,
-    )}`,
-    (output) => `Source:\n\n${input}\n\nResult:\n\n${output}`,
-  );
-  update(result);
-}
-
-async function handleFreeStyle(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(`Asking Gemini...\n\n${input}`);
-  const result = await askGemini(
+async function handlePrompt(name: string, input: string) {
+  const def = options.prompts[name];
+  const args: QueryContext = {
+    locale: options.locale,
+    alternateLocale: options.alternateLocale,
     input,
-    (output) => `Question:\n\n${input}\n\n${output}`,
-  );
-  update(result);
+    output: '',
+  };
+  if (def.requireInput && !input) {
+    return;
+  }
+  const update = await createPopup(fillTemplate(def.loadingTpl || '', args));
+  args.output = await askGemini(fillTemplate(def.promptTpl, args));
+  update(fillTemplate(def.resultTpl || '{{output}}', args));
 }
 
 export function activate(context: ExtensionContext): void {
   const config = workspace.getConfiguration('coc-ai');
-  options.geminiApiKey = config.get(
-    'geminiApiKey',
-    process.env.GEMINI_API_KEY || '',
-  );
+  options.geminiApiKey =
+    config.get('geminiApiKey') || process.env.GEMINI_API_KEY || '';
   if (!options.geminiApiKey) {
     throw new Error('GEMINI_API_KEY is missing');
   }
@@ -148,22 +119,16 @@ export function activate(context: ExtensionContext): void {
 
   context.subscriptions.push(
     commands.registerCommand(
-      'ai.ask',
-      async (...args: string[]) =>
-        await handleFreeStyle(
-          args.join(' ').trim() || (await getSelectedText()),
-        ),
+      'ai.handle',
+      async (name: string, ...args: string[]) => {
+        await handlePrompt(
+          name,
+          args.join(' ').trim() ||
+            (await getSelectedText()) ||
+            (await getCword()),
+        );
+      },
     ),
-  );
-  context.subscriptions.push(
-    commands.registerCommand('ai.define', async (...args: string[]) => {
-      await handleDefine(args.join(' ').trim() || (await getCword()));
-    }),
-  );
-  context.subscriptions.push(
-    commands.registerCommand('ai.translate', async (...args: string[]) => {
-      await handleTranslate(args.join(' ').trim() || (await getSelectedText()));
-    }),
   );
   context.subscriptions.push(
     workspace.registerAutocmd({
