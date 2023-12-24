@@ -1,16 +1,62 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   ExtensionContext,
-  commands,
-  workspace,
-  window,
   Window,
+  commands,
+  window,
+  workspace,
 } from 'coc.nvim';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+
+interface PromptDefinition {
+  command?: string;
+  loadingTpl?: string;
+  promptTpl: string;
+  resultTpl?: string;
+  requireInput?: boolean;
+}
+
+/* eslint-disable no-template-curly-in-string */
+const defaultPrompts: Record<string, PromptDefinition> = {
+  define: {
+    command: 'GeminiDefine',
+    loadingTpl: 'Define:\n\n${input}\n\nAsking Gemini...',
+    promptTpl:
+      'Define the content below in locale ${locale}. The output is a bullet list of definitions grouped by parts of speech in plain text. Each item of the definition list contains pronunciation using IPA, meaning, and a list of usage examples with at most 2 items. Do not return anything else. Here is the content:\n\n${inputEncoded}',
+    resultTpl: 'Original Content:\n\n${input}\n\nDefinition:\n\n${output}',
+    requireInput: true,
+  },
+  translate: {
+    command: 'GeminiTranslate',
+    loadingTpl:
+      'Translating the content below:\n\n${input}\n\nAsking Gemini...',
+    promptTpl:
+      'Translate the content below into locale ${locale}. Translate into ${alternateLocale} instead if it is already in ${locale}. Do not return anything else. Here is the content:\n\n${inputEncoded}',
+    resultTpl: 'Original Content:\n\n${input}\n\nTranslation:\n\n${output}',
+    requireInput: true,
+  },
+  improve: {
+    command: 'GeminiImprove',
+    loadingTpl: 'Improve the content below:\n\n${input}\n\nAsking Gemini...',
+    promptTpl:
+      'Improve the content below in the same locale. Do not return anything else. Here is the content:\n\n${inputEncoded}',
+    resultTpl:
+      'Original Content:\n\n${input}\n\nImproved Content:\n\n${output}',
+    requireInput: true,
+  },
+  freeStyle: {
+    command: 'GeminiAsk',
+    loadingTpl: 'Question:\n\n${input}\n\nAsking Gemini...',
+    promptTpl: '${input}',
+    resultTpl: 'Question:\n\n${input}\n\nAnswer:\n\n${output}',
+    requireInput: true,
+  },
+};
 
 const options = {
   geminiApiKey: '',
   locale: 'en',
   alternateLocale: 'zh',
+  prompts: defaultPrompts,
 };
 
 async function askGemini(
@@ -86,60 +132,30 @@ async function getSelectedText(): Promise<string> {
   return range ? doc.textDocument.getText(range).trim() : '';
 }
 
-async function handleDefine(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(`Query: ${input}\n\nAsking Gemini...`);
-  const result = await askGemini(
-    `Define the content below in locale ${
-      options.locale
-    }. The output is a bullet list of definitions grouped by parts of speech in plain text. Each item of the definition list contains pronunciation using IPA, meaning, and a list of usage examples with at most 2 items. Do not return anything else. Here is the content:\n\n${JSON.stringify(
-      input,
-    )}`,
-    (output) => `Query: ${input}\n\n${output}`,
-  );
-  update(result);
+function fillTemplate(tpl: string, args: Record<string, string>) {
+  return tpl.replace(/\${(\w+)}/g, (m, g) => args[g] ?? m);
 }
 
-async function handleTranslate(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(
-    `Translating the content below:\n\n${input}\n\nAsking Gemini...`,
-  );
-  const result = await askGemini(
-    `Translate the content below into locale ${
-      options.locale
-    }. Translate into ${options.alternateLocale} instead if it is already in ${
-      options.locale
-    }. Do not return anything else. Here is the content:\n\n${JSON.stringify(
-      input,
-    )}`,
-    (output) => `Source:\n\n${input}\n\nResult:\n\n${output}`,
-  );
-  update(result);
-}
-
-async function handleFreeStyle(input: string) {
-  if (!input) {
-    return;
-  }
-  const update = await createPopup(`Asking Gemini...\n\n${input}`);
-  const result = await askGemini(
+async function handlePrompt(name: string, input: string) {
+  const def = options.prompts[name];
+  const args: Record<string, string> = {
+    locale: options.locale,
+    alternateLocale: options.alternateLocale,
     input,
-    (output) => `Question:\n\n${input}\n\n${output}`,
-  );
-  update(result);
+    inputEncoded: JSON.stringify(input),
+  };
+  if (def.requireInput && !input) {
+    return;
+  }
+  const update = await createPopup(fillTemplate(def.loadingTpl || '', args));
+  args.output = await askGemini(fillTemplate(def.promptTpl, args));
+  update(fillTemplate(def.resultTpl || '${output}', args));
 }
 
 export function activate(context: ExtensionContext): void {
   const config = workspace.getConfiguration('coc-ai');
-  options.geminiApiKey = config.get(
-    'geminiApiKey',
-    process.env.GEMINI_API_KEY || '',
-  );
+  options.geminiApiKey =
+    config.get('geminiApiKey') || process.env.GEMINI_API_KEY || '';
   if (!options.geminiApiKey) {
     throw new Error('GEMINI_API_KEY is missing');
   }
@@ -148,21 +164,18 @@ export function activate(context: ExtensionContext): void {
 
   context.subscriptions.push(
     commands.registerCommand(
-      'ai.ask',
-      async (...args: string[]) =>
-        await handleFreeStyle(
+      'ai.handle',
+      async (name: string, ...args: string[]) => {
+        await handlePrompt(
+          name,
           args.join(' ').trim() || (await getSelectedText()),
-        ),
+        );
+      },
     ),
   );
   context.subscriptions.push(
-    commands.registerCommand('ai.define', async (...args: string[]) => {
-      await handleDefine(args.join(' ').trim() || (await getCword()));
-    }),
-  );
-  context.subscriptions.push(
-    commands.registerCommand('ai.translate', async (...args: string[]) => {
-      await handleTranslate(args.join(' ').trim() || (await getSelectedText()));
+    commands.registerCommand('ai.handleCword', async (name: string) => {
+      await handlePrompt(name, await getCword());
     }),
   );
   context.subscriptions.push(

@@ -30,19 +30,19 @@ Set the API key and other options in `:CocConfig`:
 
 ```viml
 " Define the word under cursor
-:CocCommand ai.define
+:CocCommand ai.handleCword define
 
 " Define a word
-:CocCommand ai.define happy
+:CocCommand ai.handle define happy
 
 " Translate the selected text
-:CocCommand ai.translate
+:CocCommand ai.handle translate
 
 " Translate the specified text
-:CocCommand ai.translate I am happy.
+:CocCommand ai.handle translate I am happy.
 
 " Ask anything, either specified or from the selected text
-:CocCommand ai.ask
+:CocCommand ai.handle freeStyle Tell a joke.
 ```
 
 ## Related Projects
